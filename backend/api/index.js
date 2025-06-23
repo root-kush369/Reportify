@@ -5,7 +5,9 @@ const {createClient} = require("@supabase/supabase-js");
 const nodemailer = require("nodemailer");
 const app = express();
 
-app.use(cors({origin: "http://localhost:5173"}));
+// app.use(cors({origin: "http://localhost:5173"}));
+
+app.use(cors({origin: "https://reportify-now.vercel.app/"}));
 app.use(express.json());
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
@@ -53,4 +55,6 @@ app.post("/api/schedule-report", async (req, res) => {
     }
 });
 
-app.listen(5000, () => console.log("Server running on port 5000"));
+// app.listen(5000, () => console.log("Server running on port 5000"));
+
+module.exports = app;
