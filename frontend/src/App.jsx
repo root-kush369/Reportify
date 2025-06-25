@@ -9,10 +9,9 @@ function App() {
   const [newReport, setNewReport] = useState({ date: "", category: "", amount: "", user: "", region: "" });
   const [email, setEmail] = useState("");
 
-  // Determine API base URL dynamically
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin ;
+  // Determine API base URL from environment variable or fallback
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-  // Fetch reports on mount
   useEffect(() => {
     axios
       .get(`${API_BASE_URL}/api/reports`)
@@ -20,17 +19,14 @@ function App() {
       .catch((error) => console.error("Error fetching reports:", error));
   }, [API_BASE_URL]);
 
-  // Handle filter changes
   const handleFilterChange = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
   };
 
-  // Handle new report input
   const handleNewReportChange = (e) => {
     setNewReport({ ...newReport, [e.target.name]: e.target.value });
   };
 
-  // Add new report
   const addReport = () => {
     axios
       .post(`${API_BASE_URL}/api/reports`, {
@@ -47,7 +43,6 @@ function App() {
       .catch((error) => console.error("Error adding report:", error));
   };
 
-  // Apply filters to reports
   const filteredReports = reports.filter(
     (report) =>
       (filters.date ? report.date === filters.date : true) &&
@@ -56,7 +51,6 @@ function App() {
       (filters.region ? report.region.toLowerCase().includes(filters.region.toLowerCase()) : true)
   );
 
-  // Export filtered reports to PDF
   const exportPDF = () => {
     if (filteredReports.length === 0) {
       alert("No reports to export. Add or adjust filters to include data.");
@@ -74,7 +68,6 @@ function App() {
     doc.save("reportify-report.pdf");
   };
 
-  // Schedule report via email
   const scheduleReport = () => {
     if (!email) {
       alert("Please enter an email address");
@@ -97,8 +90,6 @@ function App() {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-5xl">
         <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Reportify - Reporting Engine</h1>
-
-        {/* Filters */}
         <div className="mb-6 flex flex-col sm:flex-row gap-4">
           <input
             type="date"
@@ -138,8 +129,6 @@ function App() {
             Export to PDF
           </button>
         </div>
-
-        {/* Email Scheduling */}
         <div className="mb-6 flex gap-4">
           <input
             type="email"
@@ -152,8 +141,6 @@ function App() {
             Schedule Report
           </button>
         </div>
-
-        {/* Data Entry Form */}
         <div className="mb-6 p-4 bg-gray-50 rounded-md">
           <h2 className="text-xl font-semibold mb-4">Add New Report</h2>
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
@@ -208,8 +195,6 @@ function App() {
             </button>
           </div>
         </div>
-
-        {/* Pivot-like Table */}
         <div className="overflow-x-auto">
           <table className="w-full border-collapse bg-white rounded-md shadow-sm">
             <thead>
