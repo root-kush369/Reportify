@@ -1,4 +1,3 @@
-// frontend/App.jsx
 import { useState, useEffect } from "react";
 import axios from "axios";
 import jsPDF from "jspdf";
@@ -10,10 +9,8 @@ function App() {
   const [newReport, setNewReport] = useState({ date: "", category: "", amount: "", user: "", region: "" });
   const [email, setEmail] = useState("");
 
-  // Determine API base URL (local or deployed)
-  const API_BASE_URL = process.env.NODE_ENV === "development"
-    ? "http://localhost:5000"
-    : "https://reportify.vercel.app";
+  // Determine API base URL dynamically
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin;
 
   // Fetch reports on mount
   useEffect(() => {
