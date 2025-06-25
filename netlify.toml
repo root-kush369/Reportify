@@ -5,6 +5,6 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://reportifybackendhere.vercel.app/api/:splat"
+  to = "https://reportifybeun.vercel.app//api/:splat"  // Use the new URL
   status = 200
   force = true
