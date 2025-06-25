@@ -10,7 +10,7 @@ function App() {
   const [email, setEmail] = useState("");
 
   // Determine API base URL dynamically
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin ;
 
   // Fetch reports on mount
   useEffect(() => {
