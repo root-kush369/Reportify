@@ -5,7 +5,7 @@ const nodemailer = require("nodemailer");
 
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: "https://reportifynow.netlify.app" })); // Restrict to frontend origin
+app.use(cors({ origin: "https://reportifynow.netlify.app" })); // Allow only the Netlify frontend
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
@@ -18,12 +18,14 @@ const transporter = nodemailer.createTransport({
   auth: { user: emailUser, pass: emailPass },
 });
 
+// Get all reports
 app.get("/api/reports", async (req, res) => {
   const { data, error } = await supabase.from("reports").select("*");
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+  res.json(data || []);
 });
 
+// Add a report
 app.post("/api/reports", async (req, res) => {
   const { date, category, amount, user, region } = req.body;
   const { data, error } = await supabase
@@ -31,9 +33,10 @@ app.post("/api/reports", async (req, res) => {
     .insert({ date, category, amount, user, region })
     .select();
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data[0]);
+  res.json(data ? data[0] : {});
 });
 
+// Schedule report via email
 app.post("/api/schedule-report", async (req, res) => {
   const { email, reportData } = req.body;
   const mailOptions = {
