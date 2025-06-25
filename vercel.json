@@ -6,18 +6,7 @@
     },
     {
       "source": "/(.*)",
-      "destination": "/frontend/dist/index.html"
-    }
-  ],
-  "builds": [
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "frontend/dist" }
-    },
-    {
-      "src": "backend/index.js",
-      "use": "@vercel/node"
+      "destination": "/index.html"
     }
   ]
 }
