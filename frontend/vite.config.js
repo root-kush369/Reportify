@@ -4,7 +4,11 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  define: {
-    "import.meta.env.VITE_API_BASE_URL": JSON.stringify(process.env.VITE_API_BASE_URL),
+  // Remove the custom define - let Vite handle environment variables naturally
+  build: {
+    outDir: 'dist',
+  },
+  server: {
+    port: 5173,
   },
 });
