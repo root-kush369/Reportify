@@ -18,20 +18,34 @@ function App() {
     fetchReports();
   }, []);
 
-  const fetchReports = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      console.log("Fetching from:", `${API_BASE_URL}/api/reports`);
-      const response = await axios.get(`${API_BASE_URL}/api/reports`);
-      setReports(response.data);
-    } catch (error) {
-      console.error("Error fetching reports:", error);
+const fetchReports = async () => {
+  setLoading(true);
+  setError("");
+  try {
+    console.log("Fetching from:", `${API_BASE_URL}/api/reports`);
+    const response = await axios.get(`${API_BASE_URL}/api/reports`, {
+      timeout: 15000, // 15 second timeout for slower backends
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    setReports(response.data);
+  } catch (error) {
+    console.error("Error fetching reports:", error);
+    
+    if (error.code === 'ECONNABORTED') {
+      setError("Backend is taking too long to respond. Please try again.");
+    } else if (error.response) {
+      setError(`Backend error: ${error.response.status} - ${error.response.data?.error || 'Server error'}`);
+    } else if (error.request) {
+      setError(`Cannot connect to backend at ${API_BASE_URL}. Please check if backend is running.`);
+    } else {
       setError("Failed to fetch reports. Please check if backend is running.");
-    } finally {
-      setLoading(false);
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleFilterChange = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
