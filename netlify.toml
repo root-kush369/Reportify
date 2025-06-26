@@ -3,8 +3,17 @@
   publish = "dist"
   base = "frontend"
 
+# Environment variables are set in Netlify dashboard
+# VITE_API_BASE_URL should be set to: https://reportifybackend-kumpkl1iu-kush-bhardwajs-projects-c58a58f7.vercel.app
+
 [[redirects]]
   from = "/api/*"
-  to = "https://reportifybeun.vercel.app/api/:splat"  
+  to = "https://https://reportifybackend-kumpkl1iu-kush-bhardwajs-projects-c58a58f7.vercel.app/:splat"  
   status = 200
   force = true
+
+# Handle client-side routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
