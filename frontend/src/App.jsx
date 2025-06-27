@@ -11,7 +11,49 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+// Add this function inside the App component
+const checkBackendConnection = async () => {
+  setLoading(true);
+  setError("");
+  
+  try {
+    // First try the health endpoint
+    const healthResponse = await axios.get(`${API_BASE_URL}/health`, {
+      timeout: 5000
+    });
+    
+    if (healthResponse.data.status === "OK") {
+      // If health check passes, fetch reports
+      await fetchReports();
+    } else {
+      setError("Backend is running but not healthy");
+    }
+  } catch (err) {
+    // If health check fails, try the root endpoint
+    try {
+      const rootResponse = await axios.get(API_BASE_URL, {
+        timeout: 5000
+      });
+      
+      if (rootResponse.data.message) {
+        setError("Backend is running but API endpoints might be misconfigured");
+      } else {
+        setError("Received unexpected response from backend");
+      }
+    } catch (finalErr) {
+      // Both endpoints failed
+      console.error("Final connection error:", finalErr);
+      setError(`Cannot connect to backend at ${API_BASE_URL}. Please check if backend is running.`);
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
+// Update your useEffect to use the new function
+useEffect(() => {
+  checkBackendConnection();
+}, []);
 useEffect(() => {
   // Test connection on load
   axios.get(`${API_BASE_URL}/api/health`)

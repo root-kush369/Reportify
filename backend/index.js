@@ -10,8 +10,7 @@ app.use(express.json());
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  "https://reportifynow.netlify.app",
-  
+  "https://reportifynow.netlify.app"
 ];
 
 // Improved startup logging
@@ -20,17 +19,34 @@ console.log(`Allowed CORS origins: ${allowedOrigins.join(', ')}`);
 console.log(`Supabase URL: ${process.env.SUPABASE_URL ? 'Configured' : 'MISSING'}`);
 console.log(`Email user: ${process.env.EMAIL_USER ? 'Configured' : 'MISSING'}`);
 
+// Enhanced CORS middleware
 app.use(cors({
   origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
     console.log(`Incoming request from origin: ${origin}`);
-    if (!origin || allowedOrigins.some(allowed => origin.includes(allowed))) {
+    
+    // Extract base domain without protocol or paths
+    const getDomain = url => url.replace(/^https?:\/\/([^\/]+).*$/, '$1');
+    const originDomain = getDomain(origin);
+    
+    // Check against all allowed domains
+    const isAllowed = allowedOrigins.some(allowed => {
+      const allowedDomain = getDomain(allowed);
+      return originDomain === allowedDomain;
+    });
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
       console.error('Blocked by CORS:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Database and email setup
@@ -69,42 +85,42 @@ app.get("/health", (req, res) => {
 });
 
 // Reports API
-app.route("/api/reports")
-  .get(async (req, res) => {
-    try {
-      const { data, error } = await supabase.from("reports").select("*");
-      if (error) throw error;
-      res.json(data || []);
-    } catch (err) {
-      console.error(`GET /api/reports error: ${err.message}`);
-      res.status(500).json({
-        error: "Failed to fetch reports",
-        details: process.env.NODE_ENV !== 'production' ? err.message : undefined
-      });
-    }
-  })
-  .post(async (req, res) => {
-    try {
-      const { date, category, amount, user, region } = req.body;
-      if (!date || !category || !amount || !user || !region) {
-        return res.status(400).json({ error: "All fields are required" });
-      }
+app.get("/api/reports", async (req, res) => {
+  try {
+    const { data, error } = await supabase.from("reports").select("*");
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    console.error(`GET /api/reports error: ${err.message}`);
+    res.status(500).json({
+      error: "Failed to fetch reports",
+      details: process.env.NODE_ENV !== 'production' ? err.message : undefined
+    });
+  }
+});
 
-      const { data, error } = await supabase
-        .from("reports")
-        .insert({ date, category, amount: parseFloat(amount), user, region })
-        .select();
-      
-      if (error) throw error;
-      res.status(201).json(data[0]);
-    } catch (err) {
-      console.error(`POST /api/reports error: ${err.message}`);
-      res.status(500).json({
-        error: "Failed to add report",
-        details: process.env.NODE_ENV !== 'production' ? err.message : undefined
-      });
+app.post("/api/reports", async (req, res) => {
+  try {
+    const { date, category, amount, user, region } = req.body;
+    if (!date || !category || !amount || !user || !region) {
+      return res.status(400).json({ error: "All fields are required" });
     }
-  });
+
+    const { data, error } = await supabase
+      .from("reports")
+      .insert({ date, category, amount: parseFloat(amount), user, region })
+      .select();
+    
+    if (error) throw error;
+    res.status(201).json(data[0]);
+  } catch (err) {
+    console.error(`POST /api/reports error: ${err.message}`);
+    res.status(500).json({
+      error: "Failed to add report",
+      details: process.env.NODE_ENV !== 'production' ? err.message : undefined
+    });
+  }
+});
 
 // Schedule Report
 app.post("/api/schedule-report", async (req, res) => {
