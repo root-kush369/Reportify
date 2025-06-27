@@ -11,6 +11,17 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+
+useEffect(() => {
+  // Test connection on load
+  axios.get(`${API_BASE_URL}/api/health`)
+    .then(res => console.log("Backend health:", res.data))
+    .catch(err => console.error("Health check failed:", err));
+  
+  fetchReports();
+}, []);
+
+
   // Fixed API base URL handling - remove trailing slash if present
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000").replace(/\/$/, "");
 
