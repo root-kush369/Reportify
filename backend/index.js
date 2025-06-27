@@ -6,33 +6,24 @@ const nodemailer = require("nodemailer");
 const app = express();
 app.use(express.json());
 
-// Fixed CORS configuration - allow both development and production origins
+// Enhanced CORS configuration
 const allowedOrigins = [
-  "http://localhost:5173", // Vite dev server
-  "http://localhost:3000", // Alternative dev server
-  "https://reportifynow.netlify.app", // Production frontend
-  "https://reportifynowfrontend.netlify.app" // ADDED
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://reportifynow.netlify.app",
+  
 ];
 
-// === START OF NEW CODE ===
-// Log environment info on startup
+// Improved startup logging
 console.log(`Starting Reportify backend in ${process.env.NODE_ENV || 'development'} mode`);
 console.log(`Allowed CORS origins: ${allowedOrigins.join(', ')}`);
 console.log(`Supabase URL: ${process.env.SUPABASE_URL ? 'Configured' : 'MISSING'}`);
 console.log(`Email user: ${process.env.EMAIL_USER ? 'Configured' : 'MISSING'}`);
-// === END OF NEW CODE ===
 
 app.use(cors({
   origin: function (origin, callback) {
-    // === START OF NEW CODE ===
     console.log(`Incoming request from origin: ${origin}`);
-    // === END OF NEW CODE ===
-    
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-    
-    // === MODIFIED CODE ===
-    if (allowedOrigins.some(allowed => origin.includes(allowed))) {
+    if (!origin || allowedOrigins.some(allowed => origin.includes(allowed))) {
       callback(null, true);
     } else {
       console.error('Blocked by CORS:', origin);
@@ -42,152 +33,122 @@ app.use(cors({
   credentials: true
 }));
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Database and email setup
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
 
-const emailUser = process.env.EMAIL_USER;
-const emailPass = process.env.EMAIL_PASS;
-
-// === FIXED TYPO ===
-const transporter = nodemailer.createTransport({ // Was "createTransporter"
+const transporter = nodemailer.createTransport({
   service: "gmail",
-  auth: { user: emailUser, pass: emailPass },
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
 });
 
-// Add a health check endpoint
+// API Routes
 app.get("/", (req, res) => {
-  res.json({ message: "Reportify Backend is running!", timestamp: new Date().toISOString() });
+  res.json({
+    message: "Reportify Backend is running!",
+    endpoints: {
+      health: "/health",
+      reports: "/api/reports",
+      schedule: "/api/schedule-report"
+    },
+    timestamp: new Date().toISOString()
+  });
 });
 
-app.get("/api/health", (req, res) => {
-  res.json({ status: "OK", message: "Backend is healthy" });
+app.get("/health", (req, res) => {
+  res.json({ 
+    status: "OK",
+    message: "Backend is healthy",
+    timestamp: new Date().toISOString()
+  });
 });
 
-// Get all reports
-app.get("/api/reports", async (req, res) => {
-  // === NEW DEBUG LOG ===
-  console.log("GET /api/reports called");
-  
-  try {
-    const { data, error } = await supabase.from("reports").select("*");
-    if (error) {
-      // === ENHANCED ERROR HANDLING ===
-      console.error(`Supabase error: ${error.message}`);
-      return res.status(500).json({ 
-        error: "Database error",
-        details: process.env.NODE_ENV !== 'production' ? error.message : undefined
+// Reports API
+app.route("/api/reports")
+  .get(async (req, res) => {
+    try {
+      const { data, error } = await supabase.from("reports").select("*");
+      if (error) throw error;
+      res.json(data || []);
+    } catch (err) {
+      console.error(`GET /api/reports error: ${err.message}`);
+      res.status(500).json({
+        error: "Failed to fetch reports",
+        details: process.env.NODE_ENV !== 'production' ? err.message : undefined
       });
     }
-    
-    // === NEW DEBUG LOG ===
-    console.log(`Returning ${data.length} reports`);
-    res.json(data || []);
-  } catch (err) {
-    // === ENHANCED ERROR HANDLING ===
-    console.error(`GET /api/reports error: ${err.message}`);
-    res.status(500).json({ 
-      error: "Internal server error",
-      details: process.env.NODE_ENV !== 'production' ? err.message : undefined
-    });
-  }
-});
+  })
+  .post(async (req, res) => {
+    try {
+      const { date, category, amount, user, region } = req.body;
+      if (!date || !category || !amount || !user || !region) {
+        return res.status(400).json({ error: "All fields are required" });
+      }
 
-// Add a report
-app.post("/api/reports", async (req, res) => {
-  // === NEW DEBUG LOG ===
-  console.log("POST /api/reports called with data:", req.body);
-  
-  try {
-    const { date, category, amount, user, region } = req.body;
-    
-    // Validate required fields
-    if (!date || !category || !amount || !user || !region) {
-      return res.status(400).json({ error: "All fields are required" });
-    }
-    
-    const { data, error } = await supabase
-      .from("reports")
-      .insert({ date, category, amount: parseFloat(amount), user, region })
-      .select();
+      const { data, error } = await supabase
+        .from("reports")
+        .insert({ date, category, amount: parseFloat(amount), user, region })
+        .select();
       
-    if (error) {
-      // === ENHANCED ERROR HANDLING ===
-      console.error(`Supabase error: ${error.message}`);
-      return res.status(500).json({ 
-        error: "Database error",
-        details: process.env.NODE_ENV !== 'production' ? error.message : undefined
+      if (error) throw error;
+      res.status(201).json(data[0]);
+    } catch (err) {
+      console.error(`POST /api/reports error: ${err.message}`);
+      res.status(500).json({
+        error: "Failed to add report",
+        details: process.env.NODE_ENV !== 'production' ? err.message : undefined
       });
     }
-    
-    // === NEW DEBUG LOG ===
-    console.log("Added new report:", data[0]);
-    res.json(data ? data[0] : {});
-  } catch (err) {
-    // === ENHANCED ERROR HANDLING ===
-    console.error(`POST /api/reports error: ${err.message}`);
-    res.status(500).json({ 
-      error: "Failed to add report",
-      details: process.env.NODE_ENV !== 'production' ? err.message : undefined
-    });
-  }
-});
+  });
 
-// Schedule report via email
+// Schedule Report
 app.post("/api/schedule-report", async (req, res) => {
-  // === NEW DEBUG LOG ===
-  console.log("POST /api/schedule-report called with email:", req.body.email);
-  
   try {
     const { email, reportData } = req.body;
-    
     if (!email || !reportData) {
-      return res.status(400).json({ error: "Email and report data are required" });
+      return res.status(400).json({ error: "Email and report data required" });
     }
-    
-    const mailOptions = {
-      from: emailUser,
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
       to: email,
       subject: "Scheduled Report from Reportify",
       text: `Report Data:\n${JSON.stringify(reportData, null, 2)}`,
-    };
-    
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        // === ENHANCED ERROR HANDLING ===
-        console.error(`Email error: ${error.message}`);
-        return res.status(500).json({ 
-          error: "Email failed",
-          details: process.env.NODE_ENV !== 'production' ? error.message : undefined
-        });
-      }
-      
-      // === NEW DEBUG LOG ===
-      console.log("Email sent successfully:", info.response);
-      res.json({ message: "Report scheduled and emailed successfully" });
+      html: `<pre>${JSON.stringify(reportData, null, 2)}</pre>`
     });
+
+    res.json({ message: "Report scheduled and emailed successfully" });
   } catch (err) {
-    // === ENHANCED ERROR HANDLING ===
     console.error(`POST /api/schedule-report error: ${err.message}`);
-    res.status(500).json({ 
-      error: "Report scheduling failed",
+    res.status(500).json({
+      error: "Failed to schedule report",
       details: process.env.NODE_ENV !== 'production' ? err.message : undefined
     });
   }
 });
 
-// === START OF NEW CODE ===
-// Global error handler
+// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(`Global error handler: ${err.message}`);
+  console.error(`Global error: ${err.stack}`);
   res.status(500).json({
-    error: "Unexpected server error",
+    error: "Internal server error",
     details: process.env.NODE_ENV !== 'production' ? err.message : undefined
   });
 });
-// === END OF NEW CODE ===
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Try these endpoints:
+  - http://localhost:${PORT}/
+  - http://localhost:${PORT}/health
+  - http://localhost:${PORT}/api/reports`
+  );
+});
 
 module.exports = app;
